@@ -1,0 +1,8 @@
+group 'com.zhenik.akkastreams'
+version '1.0-SNAPSHOT'
+apply plugin: 'scala'
+apply plugin: 'application'
+
+sourceCompatibility = 1.8
+
+mainClassName = 'com.zhenik.akkastreams.quickstart.QuickstartApp1'
