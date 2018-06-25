@@ -6,7 +6,6 @@ import akka.actor.ActorSystem
 import akka.stream._
 import akka.stream.scaladsl._
 import akka.util.ByteString
-import akka.{Done, NotUsed}
 
 import scala.concurrent._
 

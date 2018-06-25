@@ -1,7 +1,6 @@
 package com.zhenik.akkastreams.quickstart
 
 import java.nio.file.Paths
-
 import akka.actor.ActorSystem
 import akka.stream._
 import akka.stream.scaladsl._
@@ -25,9 +24,9 @@ object QuickstartApp1 extends App {
 
 
   // understanding of .scan()
-  val done: Future[Done] = source.scan(0)( (a,b) => {
+  val done: Future[Done] = source.scan(0)((a, b) => {
     print(s"$a + $b = ")
-    a+b
+    a + b
   }).runForeach(println(_))
 
   // require dispatcher for termination
@@ -35,9 +34,7 @@ object QuickstartApp1 extends App {
   done.onComplete(_ => system.terminate())
 
 
-
-
-  val factorials = source.scan(BigInt(1))((acc, next)=> acc * next)
+  val factorials = source.scan(BigInt(1))((acc, next) => acc * next)
   val result: Future[IOResult] =
     factorials
       .map(num ⇒ ByteString(s"$num\n"))
