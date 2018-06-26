@@ -49,4 +49,40 @@ object QuickstartApp2 extends App {
     .runWith(Sink.foreach(println)) // Attach the Flow to a Sink that will finally print the hashtags
 
   // $FiddleDependency org.akka-js %%% akkajsactorstream % 1.2.5.1
+
+  val writeAuthors: Sink[Author, NotUsed] = Flow[Author].to(Sink.foreach(println(_)))
+  val writeHashtags: Sink[Hashtag, NotUsed] = Flow[Hashtag].to(Sink.foreach(println(_)))
+  val g = RunnableGraph.fromGraph(GraphDSL.create() { implicit b =>
+    import GraphDSL.Implicits._
+
+    val bcast = b.add(Broadcast[Tweet](2))
+    tweets ~> bcast.in
+    bcast.out(0) ~> Flow[Tweet].map(_.author) ~> writeAuthors
+    bcast.out(1) ~> Flow[Tweet].mapConcat(_.hashtags.toList) ~> writeHashtags
+    ClosedShape
+  })
+  g.run()
+
+  tweets
+    .buffer(10, OverflowStrategy.dropHead)
+    .map(slowComputation)
+    .runWith(Sink.ignore)
+
+  def slowComputation(tweet: Tweet):Tweet = tweet
+
+
+  val tweetsInMinuteFromNow = tweets
+
+  val sumSink = Sink.fold[Int, Int](0)(_ + _)
+  val counterRunnableGraph: RunnableGraph[Future[Int]] =
+    tweetsInMinuteFromNow
+      .filter(_.hashtags contains akkaTag)
+      .map(t => 1)
+      .toMat(sumSink)(Keep.right)
+
+  // materialize the stream once in the morning
+  val morningTweetsCount: Future[Int] = counterRunnableGraph.run()
+  // and once in the evening, reusing the flow
+  val eveningTweetsCount: Future[Int] = counterRunnableGraph.run()
+
 }

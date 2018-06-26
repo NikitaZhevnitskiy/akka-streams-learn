@@ -8,11 +8,13 @@ import akka.stream.ActorMaterializer;
 import akka.stream.ClosedShape;
 import akka.stream.FlowShape;
 import akka.stream.Materializer;
+import akka.stream.OverflowStrategy;
 import akka.stream.SinkShape;
 import akka.stream.UniformFanOutShape;
 import akka.stream.javadsl.Broadcast;
 import akka.stream.javadsl.Flow;
 import akka.stream.javadsl.GraphDSL;
+import akka.stream.javadsl.Keep;
 import akka.stream.javadsl.RunnableGraph;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
@@ -59,6 +61,41 @@ public class QuickstartApp2 {
       return ClosedShape.getInstance();
     })).run(mat);
 
+
+    // Back-pressure example
+    // Use correct OverflowStrategy in case of buffer overflow
+    tweets
+        .buffer(10, OverflowStrategy.dropHead())
+        .map(QuickstartApp2::slowComputation)
+        .runWith(Sink.ignore(), mat);
+
+
+
+
+
+    // Keep.left - Integer, Keep.right - CompletionStage<Integer>
+    final Sink<Integer, CompletionStage<Integer>> sumSink =
+        Sink.<Integer, Integer>fold(0, (acc, elem) -> acc + elem);
+
+    final RunnableGraph<CompletionStage<Integer>> counter =
+        tweets.map(t -> 1).toMat(sumSink, Keep.right());
+    final CompletionStage<Integer> sum = counter.run(mat);
+    final CompletionStage<Void> voidCompletionStage =
+        sum.thenAcceptAsync(c -> System.out.println("Total tweets processed: " + c), system.dispatcher());
+
+    Source<Tweet, NotUsed> tweetsInMinuteFromNow = tweets;
+
+    final RunnableGraph<CompletionStage<Integer>> counterRunnableGraph =
+        tweetsInMinuteFromNow
+            .filter(t -> t.hashtags().contains(AKKA))
+            .map(t -> 1)
+            .toMat(sumSink, Keep.right());
+
+// materialize the stream once in the morning
+    final CompletionStage<Integer> morningTweetsCount = counterRunnableGraph.run(mat);
+
+// and once in the evening, reusing the blueprint
+    final CompletionStage<Integer> eveningTweetsCount = counterRunnableGraph.run(mat);
 
   }
 
@@ -128,6 +165,14 @@ public class QuickstartApp2 {
         new Tweet(new Author("appleman"), Instant.now().getEpochSecond(), "#apples rock!"),
         new Tweet(new Author("appleman"), Instant.now().getEpochSecond(), "we compared #apples to #oranges!")
     );
+  }
+
+  public static Tweet slowComputation(Tweet tweet){
+    // slow computation actions
+    // ...
+
+
+    return tweet;
   }
 
   public static final Hashtag AKKA = new Hashtag("#akka");
