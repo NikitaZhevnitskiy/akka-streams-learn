@@ -29,7 +29,7 @@ object Tour4Variances_Covariant extends App {
 }
 
 
-  /** Covariant */
+  /** Contravariant */
 
 abstract class Printer[-A] {
   def print(value: A): Unit
